@@ -1,0 +1,150 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Last 5 Conversations",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT timestamp AS time, question, answer, feedback FROM conversations ORDER BY timestamp DESC LIMIT 5",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 2,
+      "title": "User Feedback (+1 / -1)",
+      "type": "barchart",
+      "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT CASE WHEN feedback > 0 THEN 'Helpful (+1)' ELSE 'Poor (-1)' END as feedback_type, COUNT(*) as count FROM conversations GROUP BY 1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 3,
+      "title": "Feedback Breakdown",
+      "type": "gauge",
+      "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT feedback, COUNT(*) as count FROM conversations GROUP BY feedback",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 4,
+      "title": "OpenAI Cost",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT timestamp AS time, cost as value FROM conversations ORDER BY timestamp",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 5,
+      "title": "Token Usage",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT timestamp AS time, total_tokens as value FROM conversations ORDER BY timestamp",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 6,
+      "title": "Model Used Breakdown",
+      "type": "barchart",
+      "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT model, COUNT(*) as count FROM conversations GROUP BY model",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 7,
+      "title": "Response Time (Seconds)",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawSql": "SELECT timestamp AS time, response_time as value FROM conversations ORDER BY timestamp",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Sushi Assistant Monitoring",
+  "uid": "sushi-assistant-monitoring",
+  "version": 4,
+  "weekStart": ""
+}

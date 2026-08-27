@@ -1,23 +1,24 @@
-# Use official lightweight Python image
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Set working directory inside container
 WORKDIR /app
 
-# Install system dependencies if needed
+# Install system dependencies
 RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file first to leverage Docker caching
-COPY requirements.txt .
+# Copy uv binary from official astral-sh image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy dependency definition files first for caching
+COPY pyproject.toml uv.lock ./
 
-# Copy the rest of the project code into the container
+# Install dependencies using uv (frozen for production)
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Copy the rest of your application code
 COPY . .
 
 # Expose Streamlit's default port
 EXPOSE 8501
 
-# Run the Streamlit app
-CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0"]
+# Run the Streamlit app using uv
+CMD ["uv", "run", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

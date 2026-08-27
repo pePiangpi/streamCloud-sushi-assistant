@@ -7,11 +7,11 @@ import psycopg2
 class RAGLogger:
     def __init__(self):
         self.conn_params = {
-            "host": os.getenv("POSTGRES_HOST", "localhost"),
-            "database": os.getenv("POSTGRES_DB", "sushi"),
-            "user": os.getenv("POSTGRES_USER", "postgres"),
-            "password": os.getenv("POSTGRES_PASSWORD", "postgres"),
-            "port": os.getenv("POSTGRES_PORT", "5432")
+            "host": os.getenv("DB_HOST", "localhost"),
+            "database": os.getenv("DB_NAME", "sushi"),
+            "user": os.getenv("DB_USER", "postgres"),
+            "password": os.getenv("DB_PASSWORD", "postgres"),
+            "port": os.getenv("DB_PORT", "5432")
         }
         self._init_db()
 
