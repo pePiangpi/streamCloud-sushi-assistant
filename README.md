@@ -27,26 +27,39 @@ The Sushi Master & Food Safety Assistant is a RAG (Retrieval-Augmented Generatio
 
 ## Architecture
 
-The application is fully containerized and orchestrated via Docker Compose, linking the frontend, database, and monitoring layers:
+The application is structured into a modern tiered architecture, separating the presentation frontend, intelligence engine, storage persistence, and real-time observability:
 
-~~~mermaid
+```mermaid
 flowchart TD
-    User([User]) -->|Interacts via Browser| Streamlit[Streamlit Frontend<br/>port 8501]
-    Streamlit -->|Sends Query| RAG[RAG Pipeline<br/>Vector & Keyword Search]
-    RAG -->|Retrieves Context & Prompt| OpenAI[OpenAI API<br/>gpt-4o-mini]
-    OpenAI -->|Generates Response| RAG
-    RAG -->|Displays Answer & Captures Feedback| Streamlit
-    RAG -->|Logs Latency, Tokens & Feedback| Postgres[(PostgreSQL Database)]
-    Postgres -->|Queries Metrics & Logs| Grafana[Grafana Dashboard<br/>port 3000 - 7 Panels]
+    subgraph Client ["Presentation Layer"]
+        User([User / Home Cook]) -->|HTTP :8501| Streamlit["Streamlit Web UI<br/>(Chat Interface & Feedback)"]
+    end
 
-    style User fill:#f9f,stroke:#333,stroke-width:2px
-    style Streamlit fill:#bbf,stroke:#333,stroke-width:2px
-    style RAG fill:#fbf,stroke:#333,stroke-width:2px
-    style OpenAI fill:#bfb,stroke:#333,stroke-width:2px
-    style Postgres fill:#ff9,stroke:#333,stroke-width:2px
-    style Grafana fill:#f99,stroke:#333,stroke-width:2px
-~~~
+    subgraph Core ["Application & RAG Intelligence Layer"]
+        Streamlit -->|User Query| RAG["RAG Pipeline Engine<br/>(Hybrid Search + Context Injection)"]
+        RAG -->|Retrieves Chunks| LocalData[(Local Datasets<br/>Recipes & Food Safety CSVs)]
+        RAG -->|Structured Prompt| OpenAI["OpenAI API<br/>(gpt-4o-mini)"]
+        OpenAI -->|Generated Response| RAG
+    end
 
+    subgraph Storage ["Persistence & Logging Layer"]
+        RAG -->|Async Logging:<br/>Latency, Tokens & Feedback| Postgres[(PostgreSQL Database)]
+    end
+
+    subgraph Observability ["Observability Layer"]
+        Postgres -->|SQL Queries| Grafana["Grafana Dashboard<br/>(Port 3000 - 7 Panels)"]
+    end
+
+    %% Styling & Theme Colors
+    classDef client fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000;
+    classDef core fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px,color:#000;
+    classDef storage fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px,color:#000;
+    classDef obs fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000;
+
+    class User,Streamlit client;
+    class RAG,LocalData,OpenAI core;
+    class Postgres storage;
+    class Grafana obs;
 ---
 
 ## Quickstart
