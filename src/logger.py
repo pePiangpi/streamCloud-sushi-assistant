@@ -3,20 +3,37 @@ import os
 import json
 from datetime import datetime
 import psycopg2
+import streamlit as st
 
 class RAGLogger:
     def __init__(self):
-        self.conn_params = {
-            "host": os.getenv("DB_HOST", "localhost"),
-            "database": os.getenv("DB_NAME", "sushi"),
-            "user": os.getenv("DB_USER", "postgres"),
-            "password": os.getenv("DB_PASSWORD", "postgres"),
-            "port": os.getenv("DB_PORT", "5432")
-        }
         self._init_db()
 
+    def _get_connection(self):
+        """Helper to get a Postgres connection supporting Cloud URLs or local Docker params."""
+        # 1. Check Streamlit Cloud Secrets for a full connection URL first
+        try:
+            if "DATABASE_URL" in st.secrets:
+                return psycopg2.connect(st.secrets["DATABASE_URL"])
+        except Exception:
+            pass
+        
+        # 2. Check local environment variables for a full connection URL
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            return psycopg2.connect(db_url)
+            
+        # 3. Fallback to individual Docker parameters for local development
+        return psycopg2.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            database=os.getenv("DB_NAME", "sushi"),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "postgres"),
+            port=os.getenv("DB_PORT", "5432")
+        )
+
     def _init_db(self):
-        conn = psycopg2.connect(**self.conn_params)
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS conversations (
@@ -39,7 +56,7 @@ class RAGLogger:
         conn.close()
 
     def log_interaction(self, query, answer, search_results, response_time=0.0, prompt_tokens=0, completion_tokens=0, model="gpt-4o-mini"):
-        conn = psycopg2.connect(**self.conn_params)
+        conn = self._get_connection()
         cursor = conn.cursor()
         timestamp = datetime.now()
         
@@ -78,7 +95,7 @@ class RAGLogger:
 
     def update_feedback(self, log_id, feedback_value):
         """Updates the feedback score (1 for helpful, -1 for poor, 0 for neutral) for a specific log ID."""
-        conn = psycopg2.connect(**self.conn_params)
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE conversations SET feedback = %s WHERE id = %s

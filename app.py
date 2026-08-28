@@ -11,12 +11,134 @@ from src.logger import RAGLogger
 load_dotenv()
 
 st.set_page_config(page_title="Sushi Assistant", layout="centered")
+# --- CUSTOM SUSHI BAR THEME STYLING ---
+# --- ANIMATED OMAKASE LOUNGE THEME ---
+# --- ADVANCED OMAKASE LOUNGE & NEON GLOW THEME ---
+st.markdown("""
+<style>
+    @keyframes pulseGlow {
+        0% { transform: scale(1); opacity: 0.4; }
+        50% { transform: scale(1.15); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 0.4; }
+    }
+
+    @keyframes floatParticle {
+        0% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-10px) rotate(3deg); }
+        100% { transform: translateY(0px) rotate(0deg); }
+    }
+
+    /* Immersive lounge background with animated ambient neon glows */
+    .stApp {
+        background-color: #09090c;
+        background-image: 
+            radial-gradient(circle at 10% 15%, rgba(224, 122, 95, 0.12) 0%, transparent 45%),
+            radial-gradient(circle at 90% 85%, rgba(242, 100, 25, 0.08) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(30, 25, 35, 0.4) 0%, transparent 80%);
+        background-attachment: fixed;
+        color: #F4F1EA;
+    }
+    
+    /* Hide default Streamlit footer/header clutter */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Elegant Omakase Header Banner */
+    .omakase-header {
+        background: linear-gradient(135deg, rgba(26, 20, 24, 0.8), rgba(15, 13, 16, 0.9));
+        border: 1px solid rgba(224, 122, 95, 0.3);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(224, 122, 95, 0.2);
+        animation: floatParticle 8s ease-in-out infinite;
+    }
+
+    .omakase-header h1 {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 400;
+        letter-spacing: 3px;
+        color: #F4F1EA;
+        margin: 0;
+        font-size: 2rem;
+        text-shadow: 0 2px 15px rgba(224, 122, 95, 0.4);
+    }
+
+    .omakase-header p {
+        color: #A09B97;
+        font-size: 0.95rem;
+        margin-top: 8px;
+        letter-spacing: 1px;
+    }
+
+    /* Glassmorphism Chat Bubbles */
+    .stChatMessage {
+        background: rgba(20, 17, 20, 0.75) !important;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(224, 122, 95, 0.22);
+        border-radius: 16px;
+        padding: 1.2rem;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    /* Floating input box with glowing coral border */
+    .stChatInputContainer {
+        border: 1px solid rgba(224, 122, 95, 0.6) !important;
+        border-radius: 16px;
+        background-color: rgba(18, 15, 18, 0.85) !important;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(224, 122, 95, 0.15);
+    }
+
+    /* Interactive buttons with smooth glow hover */
+    .stButton button {
+        background-color: rgba(30, 24, 28, 0.9);
+        color: #F4F1EA;
+        border: 1px solid rgba(224, 122, 95, 0.35);
+        border-radius: 10px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .stButton button:hover {
+        border-color: #E07A5F;
+        color: #FFFFFF;
+        background-color: rgba(224, 122, 95, 0.2);
+        box-shadow: 0 0 18px rgba(224, 122, 95, 0.35);
+    }
+
+    /* Sidebar immersive styling */
+    section[data-testid="stSidebar"] {
+        background-color: rgba(10, 9, 12, 0.98);
+        border-right: 1px solid rgba(255, 255, 255, 0.04);
+    }
+</style>
+
+<div class="omakase-header">
+    <h1>🍣 SUSHI MASTER & FOOD SAFETY</h1>
+    <p>AI-Powered Precision Cuts, Recipes & Professional Omakase Guidance</p>
+</div>
+""", unsafe_allow_html=True)
 
 # --- GLOBAL SESSION STATE ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 def get_pg_connection():
+    # 1. Check Streamlit Cloud Secrets for a full connection URL first
+    try:
+        if "DATABASE_URL" in st.secrets:
+            return psycopg2.connect(st.secrets["DATABASE_URL"])
+    except Exception:
+        pass
+    
+    # 2. Check local environment variables for a full connection URL
+    if os.getenv("DATABASE_URL"):
+        return psycopg2.connect(os.getenv("DATABASE_URL"))
+        
+    # 3. Fallback to individual Docker parameters for local development
     return psycopg2.connect(
         host=os.getenv("DB_HOST", os.getenv("POSTGRES_HOST", "localhost")),
         database=os.getenv("DB_NAME", os.getenv("POSTGRES_DB", "sushi")),
@@ -57,7 +179,7 @@ rag_app = load_rag_app()
 # ==========================================
 # CHAT ASSISTANT INTERFACE
 # ==========================================
-st.title("🍣 Sushi Master & Food Safety Assistant")
+# st.title("🍣 Sushi Master & Food Safety Assistant")
 
 # Render all saved messages from session state
 for idx, message in enumerate(st.session_state.messages):
