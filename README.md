@@ -113,7 +113,7 @@ All dashboard auto-provisioning scripts and configurations are managed inside th
 ---
 
 ## Project Structure
-
+```text
 sushi-assistant/
 ├── app.py                      # Streamlit web interface & main entrypoint
 ├── Dockerfile                  # Container build instructions for Streamlit app
@@ -136,7 +136,7 @@ sushi-assistant/
 └── grafana/                    # 📁 Monitoring & Observability
     ├── dashboard.json          # Grafana monitoring dashboard configuration
     └── init.py                 # Automated Grafana setup script
-
+```
 ---
 
 ## Limitations
