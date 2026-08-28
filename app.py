@@ -108,18 +108,24 @@ if prompt := st.chat_input("Ask a sushi preparation or recipe question..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Thinking like a master sushi chef..."):
-            try:
-                answer, results, log_id = rag_app.rag(prompt, chat_history=st.session_state.messages[:-1])
-                st.markdown(answer)
-                with st.expander("View Retrieved Context Documents"):
-                    st.json(results)
+        try:
+            # Unpack the stream, results, and log_holder from rag.py
+            stream, results, log_holder = rag_app.rag(prompt, chat_history=st.session_state.messages[:-1])
+            
+            # Stream the response live word-by-word onto the UI
+            answer = st.write_stream(stream)
+            
+            # Extract the generated log_id once the stream finishes
+            log_id = log_holder["log_id"]
+            
+            with st.expander("View Retrieved Context Documents"):
+                st.json(results)
                     
-            except Exception as e:
-                answer = f"Sorry, I encountered an error generating the response: {e}"
-                results = []
-                log_id = 0
-                st.error(answer)
+        except Exception as e:
+            answer = f"Sorry, I encountered an error generating the response: {e}"
+            results = []
+            log_id = 0
+            st.error(answer)
 
     st.session_state.messages.append({
         "role": "assistant", 

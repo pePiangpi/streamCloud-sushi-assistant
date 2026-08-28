@@ -41,7 +41,7 @@
     {
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "id": 2,
-      "title": "User Feedback (+1 / -1)",
+      "title": "User Feedback (+1 / 0 / -1)",
       "type": "barchart",
       "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
       "targets": [
@@ -49,7 +49,7 @@
           "datasource": { "type": "postgres", "uid": "bfwb5bfygaku8e" },
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT CASE WHEN feedback > 0 THEN 'Helpful (+1)' ELSE 'Poor (-1)' END as feedback_type, COUNT(*) as count FROM conversations GROUP BY 1",
+          "rawSql": "SELECT CASE WHEN feedback > 0 THEN 'Helpful (+1)' WHEN feedback < 0 THEN 'Poor (-1)' ELSE 'Neutral (0)' END as feedback_type, COUNT(*) as count FROM conversations GROUP BY 1",
           "refId": "A"
         }
       ]

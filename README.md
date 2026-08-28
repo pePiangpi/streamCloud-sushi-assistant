@@ -1,115 +1,152 @@
 # Sushi Master & Food Safety Assistant
 
-A smart chat assistant that helps you learn sushi recipes, preparation steps, and raw food safety rules. It makes safe sushi-making easy for home cooks and beginners. 
+A smart conversational assistant that helps home cooks and beginners learn sushi recipes, preparation techniques, and strict raw food safety guidelines. 
 
-Built as a demo project for LLM Zoomcamp.
+Built as a capstone project for LLM Zoomcamp.
 
 ---
 
 ## Demo
 
-* Web UI: Run locally and open your browser at http://localhost:8501
-* Monitoring Dashboard: Open Grafana at http://localhost:3000
+* Web UI: Access locally via browser at http://localhost:8501
+* Monitoring Dashboard: Access Grafana at http://localhost:3000 (Login: admin / admin)
 
 ---
 
 ## Problem
 
-Making sushi at home can be tricky. You need exact rice-to-vinegar ratios, precise rolling techniques, and strict food safety rules. Handling raw fish like salmon and tuna requires knowing about parasite risks and temperature controls. 
+Making sushi at home can be intimidating. Beginners often struggle with precise rice-to-vinegar ratios, rolling mechanics, and critical food safety rules. Handling raw fish like salmon and tuna requires strict knowledge of parasite destruction methods, safe commercial freezing requirements, and cross-contamination prevention.
 
-The Sushi Assistant is a RAG (Retrieval-Augmented Generation) application that helps with:
-* Sushi Recipes & Prep: Answers questions about ingredients, rolling steps, and preparation methods.
-* Food Safety Rules: Explains parasite risks in raw fish, safe freezing temperatures, and clean handling rules.
-* Interactive Chat UI: A clean web interface built with Streamlit.
-* User Feedback: Rate answers with thumbs up or down. Your feedback saves directly to a database to track performance.
-
-Target users: Home cooks and beginners who want guidance on sushi preparation and food safety.
+The Sushi Master & Food Safety Assistant is a RAG (Retrieval-Augmented Generation) application designed to help with:
+* Sushi Recipes & Preparation: Providing step-by-step instructions for popular sushi rolls, ingredient proportions, and rolling techniques.
+* Food Safety Guidelines: Explaining parasite risks in raw seafood, commercial freezing requirements, and temperature safety controls.
+* Interactive Web Interface: A clean, user-friendly frontend built with Streamlit.
+* Production Observability: Real-time logging of conversations, token costs, latency, and user feedback (thumbs up/down) directly into PostgreSQL and visualized via Grafana.
 
 ---
 
 ## Quickstart
 
-The easiest way to run the application is with Docker Compose:
+The easiest way to run the complete application stack is using Docker Compose:
 
-1. Create a `.env` file in the main folder and add your OpenAI API key:
-
+1. Create a .env file in the root directory and add your OpenAI API key and database settings:
    OPENAI_API_KEY=your_openai_api_key_here
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=sushi_db
 
-2. Start all services (Streamlit app, PostgreSQL database, and Grafana):
-
+2. Build and start all services (Streamlit app, PostgreSQL, and Grafana):
    docker compose up --build -d
 
-* Streamlit App: Runs at http://localhost:8501
-* Grafana Dashboard: Runs at http://localhost:3000 (Username: admin, Password: admin)
+* Streamlit App: http://localhost:8501
+* Grafana Dashboard: http://localhost:3000
 
 ---
 
 ## Prerequisites
 
-* Docker and Docker Compose installed on your computer.
-* An OpenAI API key.
+* Python 3.12+
+* Docker and Docker Compose
+* OpenAI API Key
+* uv for fast dependency management
 
 ---
 
-## Full Setup (Without Docker for Python)
+## Full Setup (Running Python Locally with Docker Services)
 
-If you want to run Python locally while keeping the database in Docker:
+If you want to run the Streamlit app directly on your host machine while keeping the database and Grafana containerized:
 
-1. Start only the PostgreSQL database:
+1. Start the backend infrastructure containers:
+   docker compose up postgres grafana -d
 
-   docker compose up postgres -d
+2. Install dependencies and sync your virtual environment using uv:
+   uv sync
 
-2. Install Python dependencies:
+3. Run the Streamlit application:
+   uv run streamlit run app.py
 
-   pip install -r requirements.txt
+4. Initialize the Grafana monitoring dashboard:
+   cd grafana
+   uv run python init.py
 
-3. Run the Streamlit app locally:
+---
 
-   streamlit run app.py
+## Experimentation & Evaluation
+
+You can run experimentation and evaluation pipelines locally using Jupyter Lab:
+uv run jupyter lab
+
+### Retrieval Evaluation
+* Dataset: Curated Q&A pairs covering sushi recipes and seafood safety guidelines (`data/sushi-ground-truth-retrieval.csv`).
+* Evaluated across **365 ground truth questions**.
+* Metrics: Achieved a **Hit Rate of 98.36%** and a **Mean Reciprocal Rank (MRR) of 0.677** to ensure accurate chunk retrieval prior to text generation.
+
+### RAG Flow & LLM-as-a-Judge
+* Responses evaluated using `gpt-4o-mini` on a test batch of **50 samples** to balance cost and factual accuracy regarding food safety thresholds and recipe proportions.
+* Results breakdown: **96% RELEVANT** and **4% PARTLY_RELEVANT**.
 
 ---
 
 ## Monitoring with Grafana
 
-Grafana runs at http://localhost:3000 (Login: admin / admin).
+Grafana runs at http://localhost:3000 (admin / admin).
 
-The dashboard tracks:
-* Conversation logs (questions and answers).
-* User feedback votes (helpful vs. poor).
-* Database metrics and activity over time.
+The dashboard tracks production metrics across 7 key panels:
+1. Last 5 conversations: Real-time table displaying recent user queries, model answers, timestamps, and feedback ratings.
+2. User Feedback: Tracks individual thumbs-up/down user ratings over time.
+3. Feedback Breakdown: Categorized distribution ratio of positive versus negative user feedback ratings.
+4. OpenAI Cost: Time-series tracking of accumulated API expenses per request.
+5. Token Usage: Monitors prompt and completion token consumption volumes.
+6. Model Used Breakdown: Distribution chart showing which LLM models served the requests.
+7. Response Time (Seconds): Tracks system latency and query execution speed end-to-end.
 
-Grafana configurations are stored in the `grafana/` folder.
+All dashboard auto-provisioning scripts and configurations are managed inside the grafana/ directory (dashboard.json, init.py).
+
+---
+
+## Design Decisions & Trade-offs
+
+* Streamlit over Custom Frontend: Streamlit was chosen for rapid UI prototyping and built-in interactive chat components, avoiding the overhead of a separate React/JS client.
+* GPT-4o-mini over GPT-4o: Selected for its optimal balance of fast response times, low token cost, and high performance on domain-specific culinary retrieval tasks.
+* PostgreSQL Logging: Every user query, generated response, token count, and feedback rating is captured in relational tables for real-time observability via Grafana.
 
 ---
 
 ## Project Structure
 
-sushi_assistant/
-  app.py                    # Streamlit web interface and app entrypoint
-  src/
-    rag.py                  # RAG logic (combines retrieval and OpenAI)
-    vector_index.py         # Vector search configuration
-    keyword_index.py        # Keyword search fallback
-    logger.py               # Database logger for chat history and feedback
-  data/
-    OneRoll_updated.csv     # Sushi recipes and roll ingredients dataset
-    food_safety.csv         # Food safety and parasite guidelines dataset
-  grafana/                  # Grafana dashboard configurations and datasources
-  docker-compose.yaml       # Docker configuration for all services
-  Dockerfile                # Streamlit app container file
-  requirements.txt          # Python packages list
-
----
-
-## Dataset
-
-* OneRoll_updated.csv: Contains sushi recipes, ingredients, and step-by-step preparation instructions.
-* food_safety.csv: Contains safety guidelines for handling raw seafood, parasite prevention, and temperature controls.
+sushi-assistant/
+├── app.py                      # Streamlit web interface & main entrypoint
+├── Dockerfile                  # Container build instructions for Streamlit app
+├── docker-compose.yaml         # Multi-container orchestration (App + Postgres + Grafana)
+├── pyproject.toml              # Project dependencies & configuration
+├── uv.lock                     # uv dependency lock file
+├── data/                       # 📁 Data Folder (shared between app and notebooks)
+│   ├── OneRoll_updated.csv     # Sushi recipes, ingredients, and preparation steps
+│   ├── food_safety.csv         # Food safety, parasite risks, and temperature guidelines
+│   ├── sushi-ground-truth-retrieval.csv # Ground-truth query-document pairs
+│   └── rag-eval-results.csv    # Evaluation metrics and test results
+├── notebooks/                  # 📁 RAG Experimentation & Evaluation
+│   ├── generate_questions.ipynb # Auto-generate test queries and ground truth
+│   └── evaluation_and_rag.ipynb # Building, testing, and evaluating RAG pipelines
+├── src/                        # 📁 Application Source Code
+│   ├── rag.py                  # RAG logic (retrieval + OpenAI prompt generation)
+│   ├── vector_index.py         # Vector search indexing configuration
+│   ├── keyword_index.py        # Keyword search fallback implementation
+│   └── logger.py               # Database interaction and logging utilities
+└── grafana/                    # 📁 Monitoring & Observability
+    ├── dashboard.json          # Grafana monitoring dashboard configuration
+    └── init.py                 # Automated Grafana setup script
 
 ---
 
 ## Limitations
 
-* The app requires an active internet connection and a valid OpenAI API key.
-* The dataset is focused on specific sushi rolls and general seafood safety guidelines.
-* No automated test suite (tested interactively via the Streamlit web interface).
+* Requires an active internet connection and a valid OpenAI API key.
+* Dataset focuses primarily on featured sushi recipes and standard seafood safety parameters.
+* In-memory indexing requires re-ingestion upon application restart.
+
+---
+
+## About
+
+This project was built as a capstone application for LLM Zoomcamp, focusing on building production-ready LLM applications with rigorous observability and evaluation.

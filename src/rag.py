@@ -148,10 +148,10 @@ class SushiRAGVectorSearch:
     def contextualize_query(self, query, chat_history):
         """
         Uses the LLM to expand short follow-ups (like 'more') 
-        into a full search query based on conversation history. No word filtering!
+        into a full search query based on conversation history.
         """
         if not chat_history or len(query.split()) > 4:
-            return query  # If it's a long query or no history, use it as-is
+            return query  
 
         history_text = "\n".join([f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in chat_history[-4:]])
         
@@ -164,6 +164,7 @@ Latest user message: "{query}"
 
 Standalone search query:"""
 
+        # Fixed: removed stream=True here since it expects a direct string return
         response = self.llm_client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
@@ -190,32 +191,6 @@ Standalone search query:"""
         context = self.build_context(search_results)
         return self.prompt_template.format(question=query, context=context)
 
-    def llm(self, prompt, chat_history=None):
-        messages = [{'role': 'system', 'content': self.instructions}]
-        
-        if chat_history:
-            for msg in chat_history[:-1]:
-                messages.append({'role': msg['role'], 'content': msg['content']})
-        
-        messages.append({'role': 'user', 'content': prompt})
-
-        # Start timer
-        start_time = time.time()
-        
-        response = self.llm_client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.2
-        )
-        
-        # Calculate duration and extract tokens
-        response_time = time.time() - start_time
-        answer = response.choices[0].message.content
-        prompt_tokens = response.usage.prompt_tokens if response.usage else 0
-        completion_tokens = response.usage.completion_tokens if response.usage else 0
-
-        return answer, response_time, prompt_tokens, completion_tokens
-
     def rag(self, query, chat_history=None):
         # 1. Expand query using conversation history if available
         effective_query = self.contextualize_query(query, chat_history)
@@ -223,18 +198,61 @@ Standalone search query:"""
         # 2. Search using the contextualized query
         search_results = self.search(effective_query)
         
-        # 3. Build prompt and generate answer (unpacking response metrics)
+        # 3. Build prompt
         prompt = self.build_prompt(effective_query, search_results)
-        answer, response_time, prompt_tokens, completion_tokens = self.llm(prompt, chat_history=chat_history)
+        
+        messages = [{'role': 'system', 'content': self.instructions}]
+        if chat_history:
+            for msg in chat_history[:-1]:
+                messages.append({'role': msg['role'], 'content': msg['content']})
+        messages.append({'role': 'user', 'content': prompt})
 
-        # 4. Log interaction with metrics passed correctly
-        log_id = self.logger.log_interaction(
-            query=query, 
-            answer=answer, 
-            search_results=search_results,
-            response_time=response_time,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            model=self.model
+        start_time = time.time()
+        
+        # 4. Create streaming response with token inclusion enabled
+        response = self.llm_client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.2,
+            stream=True,
+            stream_options={"include_usage": True}
         )
-        return answer, search_results, log_id
+
+        log_holder = {"log_id": None}
+
+        def generate_stream():
+            full_content = []
+            prompt_tokens = 0
+            completion_tokens = 0
+            
+            for chunk in response:
+                if hasattr(chunk, 'usage') and chunk.usage is not None:
+                    prompt_tokens = chunk.usage.prompt_tokens
+                    completion_tokens = chunk.usage.completion_tokens
+                
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    piece = chunk.choices[0].delta.content
+                    full_content.append(piece)
+                    yield piece
+            
+            answer = "".join(full_content)
+            response_time = time.time() - start_time
+            
+            if prompt_tokens == 0:
+                prompt_tokens = len(prompt) // 4
+            if completion_tokens == 0:
+                completion_tokens = len(answer) // 4
+
+            # Log interaction after stream fully completes
+            log_id = self.logger.log_interaction(
+                query=query, 
+                answer=answer, 
+                search_results=search_results,
+                response_time=response_time,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                model=self.model
+            )
+            log_holder["log_id"] = log_id
+
+        return generate_stream(), search_results, log_holder
