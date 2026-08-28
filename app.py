@@ -166,11 +166,23 @@ def load_rag_app():
         rolls_path='data/OneRoll_updated.csv', 
         safety_path='data/food_safety.csv'
     )
+    
+    # Safely retrieve OpenAI API key from Streamlit Secrets or local environment
+    openai_api_key = None
+    try:
+        if "OPENAI_API_KEY" in st.secrets:
+            openai_api_key = st.secrets["OPENAI_API_KEY"]
+    except Exception:
+        pass
+        
+    if not openai_api_key:
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+
     return SushiRAGVectorSearch(
         keyword_index=keyword_index,
         vector_index=vector_index,
         embedding_model=model,
-        llm_client=OpenAI(),
+        llm_client=OpenAI(api_key=openai_api_key),
         logger=RAGLogger()
     )
 
