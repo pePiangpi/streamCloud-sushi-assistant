@@ -60,8 +60,7 @@ flowchart TD
     class RAG,LocalData,OpenAI core;
     class Postgres storage;
     class Grafana obs;
----
-
+```
 ## Quickstart
 
 The easiest way to run the complete application stack is using Docker Compose:
