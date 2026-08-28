@@ -24,43 +24,52 @@ The Sushi Master & Food Safety Assistant is a RAG (Retrieval-Augmented Generatio
 * Production Observability: Real-time logging of conversations, token costs, latency, and user feedback (thumbs up/down) directly into PostgreSQL and visualized via Grafana.
 
 ---
-
 ## Architecture
 
-The application is structured into a modern tiered architecture, separating the presentation frontend, intelligence engine, storage persistence, and real-time observability:
+The application is fully containerized and orchestrated via Docker Compose, separating internal containerized services from external APIs:
 
 ```mermaid
-flowchart TD
-    subgraph Client ["Presentation Layer"]
-        User([User / Home Cook]) -->|HTTP :8501| Streamlit["Streamlit Web UI<br/>(Chat Interface & Feedback)"]
+flowchart LR
+    User([User / Home Cook]) -->|HTTP :8501| Streamlit
+
+    subgraph Docker ["Docker Compose Orchestration Layer"]
+        subgraph Client ["Presentation"]
+            Streamlit[Streamlit Web App<br/>Container]
+        end
+
+        subgraph Engine ["Intelligence & Search"]
+            Streamlit -->|Query| Search[Hybrid Search Engine<br/>Vector + Keyword]
+            CSV[(CSV Datasets<br/>Recipes & Safety)] -->|Chunks| Search
+            Search -->|Top-k Context| Prompt[Prompt Assembler]
+        end
+
+        subgraph Storage ["Persistence"]
+            Prompt -->|Async Logging:<br/>Latency, Tokens, Feedback| Postgres[(PostgreSQL DB<br/>Container)]
+        end
+
+        subgraph Observability ["Monitoring"]
+            Postgres -->|SQL Queries| Grafana[Grafana Dashboard<br/>Port 3000 - 7 Panels]
+        end
     end
 
-    subgraph Core ["Application & RAG Intelligence Layer"]
-        Streamlit -->|User Query| RAG["RAG Pipeline Engine<br/>(Hybrid Search + Context Injection)"]
-        RAG -->|Retrieves Chunks| LocalData[(Local Datasets<br/>Recipes & Food Safety CSVs)]
-        RAG -->|Structured Prompt| OpenAI["OpenAI API<br/>(gpt-4o-mini)"]
-        OpenAI -->|Generated Response| RAG
-    end
-
-    subgraph Storage ["Persistence & Logging Layer"]
-        RAG -->|Async Logging:<br/>Latency, Tokens & Feedback| Postgres[(PostgreSQL Database)]
-    end
-
-    subgraph Observability ["Observability Layer"]
-        Postgres -->|SQL Queries| Grafana["Grafana Dashboard<br/>(Port 3000 - 7 Panels)"]
-    end
+    Prompt -->|API Request| OpenAI[OpenAI API<br/>gpt-4o-mini]
+    OpenAI -->|Response & Token Usage| Streamlit
 
     %% Styling & Theme Colors
+    classDef external fill:#F5F5F5,stroke:#616161,stroke-width:2px,color:#000;
     classDef client fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000;
-    classDef core fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px,color:#000;
+    classDef engine fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px,color:#000;
     classDef storage fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px,color:#000;
     classDef obs fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000;
 
-    class User,Streamlit client;
-    class RAG,LocalData,OpenAI core;
+    class User,OpenAI external;
+    class Streamlit client;
+    class Search,CSV,Prompt engine;
     class Postgres storage;
     class Grafana obs;
+
 ```
+
 ## Quickstart
 
 The easiest way to run the complete application stack is using Docker Compose:
