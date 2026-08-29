@@ -166,7 +166,7 @@ The application tracks live chat interactions, token counts, model latency, esti
 
 ### 1. Streamlit Monitoring Dashboard
 <p align="center">
-  <img src="streamdashboard.jpg" alt="Streamlit Monitoring Dashboard" width="100%">
+  <img src="pic/streamdashboard.png" alt="Streamlit Monitoring Dashboard" width="100%">
 </p>
 
 ### 2. Grafana Production Telemetry Dashboards
@@ -174,25 +174,25 @@ To monitor production performance and user interactions in real time, the follow
 Grafana runs at `http://localhost:3000` (`admin` / `admin`), tracking production metrics across 7 key panels:
 * **Recent Interactions & Feedback Logs**
   <p align="center">
-    <img src="last5conversations.png" alt="Last 5 Conversations Table" width="100%">
+    <img src="pic/last5conversations.png" alt="Last 5 Conversations Table" width="100%">
   </p>
 
 * **User Feedback Analytics**
   <p align="center">
-    <img src="userfeedback.png" alt="User Feedback Bar Chart" width="48%">
-    <img src="feedbackbreakdown.png" alt="Feedback Breakdown Gauges" width="48%">
+    <img src="pic/userfeedback.png" alt="User Feedback Bar Chart" width="48%">
+    <img src="pic/feedbackbreakdown.png" alt="Feedback Breakdown Gauges" width="48%">
   </p>
 
 * **Performance & Cost Metrics**
   <p align="center">
-    <img src="responsetime.png" alt="Response Time Seconds" width="48%">
-    <img src="openaicost.png" alt="OpenAI Cost Tracking" width="48%">
+    <img src="pic/responsetime.png" alt="Response Time Seconds" width="48%">
+    <img src="pic/openaicost.png" alt="OpenAI Cost Tracking" width="48%">
   </p>
 
 * **Token Consumption & Model Breakdown**
   <p align="center">
-    <img src="tokenusage.png" alt="Token Usage Chart" width="48%">
-    <img src="modelusedbreakdown.png" alt="Model Used Breakdown" width="48%">
+    <img src="pic/tokenusage.png" alt="Token Usage Chart" width="48%">
+    <img src="pic/modelusedbreakdown.png" alt="Model Used Breakdown" width="48%">
   </p>
 
 ---
