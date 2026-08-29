@@ -43,6 +43,26 @@ Strictly adhere to the following operational guidelines behind the scenes:
 - **Intent Boundary Check:** Evaluate whether the user's input is actually requesting menu items, recipes, ingredients, or preparation guidelines from the database.
 - **Handling Non-Menu Input:** If the user is engaging in general conversation (e.g., greetings, pleasantries, jokes), asking personal/opinion questions (e.g., favorites, background, philosophy), asking about unrelated topics (e.g., weather, history, coding, sports), or making chit-chat, you must completely **ignore the provided CONTEXT**.
 - **Persona & Tone:** Respond naturally, warmly, and strictly in character as an expert master sushi chef and food safety advisor. Never output raw data, piece counts, or assembly notes when answering non-menu questions.
+
+10. SIDEBAR OMAKASE PREFERENCES & CONSTRAINT ADAPTATION:
+    - The incoming message will specify the user's choices. Adapt your response strictly based on these exact selections:
+    
+      **A. Focus Area Selection:**
+      - If "Recipes & Rolling Techniques": Emphasize step-by-step assembly, rolling mechanics, and ingredient layering.
+      - If "Rice & Vinegar Preparation": Focus exclusively on rinsing, cooking, cooling, and acidifying with vinegar (komezu) to achieve pH <= 4.6 (strictly adhering to the no sugar/salt rule).
+      - If "Food Safety & Parasite Guidelines": Prioritize temperature controls, commercial freezing rules (-4°F for 7 days or -31°F for 15 hours), and cross-contamination risks.
+      - If "General / Any": Provide a balanced response combining recipes and safety naturally.
+      
+      **B. Skill Level Selection:**
+      - If "Beginner (Step-by-step)": Break every single instruction down into clear, numbered, foolproof steps. Explain all terms simply.
+      - If "Intermediate": Provide standard culinary instructions with moderate professional detail.
+      - If "Advanced": Speak like an executive master chef, utilizing high technical precision and professional terminology.
+      
+      **C. Dietary Preference Selection:**
+      - If "Traditional Raw Fish (Salmon/Tuna)": Feature raw seafood items and apply proper parasite safety guidelines.
+      - If "Cooked": Strictly filter recommendations to exclude raw fish and feature cooked rolls only).
+      - If "Vegetarian / Vegetable Rolls": Strictly filter recommendations to exclude all fish, meat, and seafood (feature cucumber, avocado, vegetable rolls only).
+
 '''
 
 PROMPT_TEMPLATE = '''
@@ -164,7 +184,6 @@ Latest user message: "{query}"
 
 Standalone search query:"""
 
-        # Fixed: removed stream=True here since it expects a direct string return
         response = self.llm_client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
@@ -191,7 +210,7 @@ Standalone search query:"""
         context = self.build_context(search_results)
         return self.prompt_template.format(question=query, context=context)
 
-    def rag(self, query, chat_history=None):
+    def rag(self, query, constraints=None, chat_history=None):
         # 1. Expand query using conversation history if available
         effective_query = self.contextualize_query(query, chat_history)
         
@@ -201,7 +220,18 @@ Standalone search query:"""
         # 3. Build prompt
         prompt = self.build_prompt(effective_query, search_results)
         
-        messages = [{'role': 'system', 'content': self.instructions}]
+        # Build dynamic system message including sidebar constraints invisibly
+        system_content = self.instructions
+        if constraints:
+            constraint_block = f"""
+[Active User Constraints for this Request]:
+- Focus Area: {constraints.get('focus_area', 'General / Any')}
+- Skill Level: {constraints.get('skill_level', 'Intermediate')}
+- Dietary Preference: {constraints.get('dietary_preference', 'Traditional Raw Fish (Salmon/Tuna)')}
+"""
+            system_content += "\n" + constraint_block
+
+        messages = [{'role': 'system', 'content': system_content}]
         if chat_history:
             for msg in chat_history[:-1]:
                 messages.append({'role': msg['role'], 'content': msg['content']})
@@ -243,7 +273,7 @@ Standalone search query:"""
             if completion_tokens == 0:
                 completion_tokens = len(answer) // 4
 
-            # Log interaction after stream fully completes
+            # Log interaction using ONLY the clean user 'query' (Grafana dashboards stay pristine!)
             log_id = self.logger.log_interaction(
                 query=query, 
                 answer=answer, 

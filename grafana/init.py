@@ -10,10 +10,11 @@ GRAFANA_URL = os.getenv("GRAFANA_URL", "http://localhost:3000")
 GRAFANA_USER = os.getenv("GRAFANA_ADMIN_USER", "admin")
 GRAFANA_PASSWORD = os.getenv("GRAFANA_ADMIN_PASSWORD", "admin")
 
-PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
-PG_DB = os.getenv("POSTGRES_DB", "sushi")
-PG_USER = os.getenv("POSTGRES_USER", "postgres")
-PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+# Updated to use your Neon cloud details via environment variables
+PG_HOST = os.getenv("POSTGRES_HOST", "ep-twilight-wave-a54vx4xu-pooler.us-east-2.aws.neon.tech")
+PG_DB = os.getenv("POSTGRES_DB", "neondb")
+PG_USER = os.getenv("POSTGRES_USER", "neondb_owner")
+PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "YOUR_NEW_NEON_PASSWORD")
 PG_PORT = os.getenv("POSTGRES_PORT", "5432")
 
 # Use Basic Auth instead of an API Key
@@ -42,11 +43,11 @@ def create_or_update_datasource():
         "database": PG_DB,
         "basicAuth": False,
         "isDefault": True,
-        "jsonData": {"sslmode": "disable", "postgresVersion": 1500},
+        # CRITICAL FIX: Neon requires sslmode 'require' instead of 'disable'
+        "jsonData": {"sslmode": "require", "postgresVersion": 1500},
         "secureJsonData": {"password": PG_PASSWORD},
     }
 
-    # Pass auth=AUTH directly
     response = requests.get(f"{GRAFANA_URL}/api/datasources/name/{datasource_payload['name']}", auth=AUTH, headers=headers)
 
     if response.status_code == 200:
@@ -89,7 +90,6 @@ def create_dashboard(datasource_uid):
 
     payload = {"dashboard": dashboard_json, "overwrite": True, "message": "Automated setup"}
     
-    # Pass auth=AUTH directly
     response = requests.post(f"{GRAFANA_URL}/api/dashboards/db", auth=AUTH, headers=headers, json=payload)
 
     if response.status_code == 200:
@@ -99,7 +99,6 @@ def create_dashboard(datasource_uid):
 
 def main():
     wait_for_grafana()
-    # Skip the API key creation step entirely
     datasource_uid = create_or_update_datasource()
     if not datasource_uid:
         return

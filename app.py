@@ -7,6 +7,7 @@ from src.keyword_index import build_keyword_index
 from src.vector_index import build_sushi_vector_index
 from src.rag import SushiRAGVectorSearch
 from src.logger import RAGLogger
+import pandas as pd
 
 load_dotenv()
 
@@ -109,11 +110,19 @@ st.markdown("""
         box-shadow: 0 0 18px rgba(224, 122, 95, 0.35);
     }
 
-    /* Sidebar immersive styling */
+/* Sidebar immersive styling */
     section[data-testid="stSidebar"] {
         background-color: rgba(10, 9, 12, 0.98);
         border-right: 1px solid rgba(255, 255, 255, 0.04);
+        color: #F4F1EA !important;
     }
+    
+    /* Ensure sidebar labels and text are clearly visible */
+    section[data-testid="stSidebar"] label, 
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: #F4F1EA !important;
+    }
+    
 </style>
 
 <div class="omakase-header">
@@ -188,10 +197,8 @@ def load_rag_app():
 
 rag_app = load_rag_app()
 
-# ==========================================
-# CHAT ASSISTANT INTERFACE
-# ==========================================
-# st.title("🍣 Sushi Master & Food Safety Assistant")
+
+st.sidebar.markdown("---")
 
 # Render all saved messages from session state
 for idx, message in enumerate(st.session_state.messages):
@@ -235,16 +242,148 @@ for idx, message in enumerate(st.session_state.messages):
             elif db_feedback == -1:
                 st.error("👎 Feedback recorded: Poor")
 
-# Capture new user input
-if prompt := st.chat_input("Ask a sushi preparation or recipe question..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+
+@st.cache_data
+def get_dynamic_sushi_suggestions(dietary_pref):
+    """Filters OneRoll_updated.csv precisely using the 'Raw_Cooked' column values."""
+    try:
+        df = pd.read_csv('data/OneRoll_updated.csv')
+        df.columns = [c.lower().strip() for c in df.columns]
+        
+        name_col = next((col for col in df.columns if 'name' in col or 'item' in col or 'title' in col), df.columns[0])
+        target_col = 'raw_cooked' # matches your Raw_Cooked column
+        
+        # Clean and lowercase values for exact matching
+        df[target_col] = df[target_col].astype(str).str.strip().str.lower()
+        
+        if "Vegetarian" in dietary_pref:
+            filtered = df[df[target_col] == 'vegetarian']
+        elif "Cooked" in dietary_pref:
+            filtered = df[df[target_col] == 'cooked']
+        else: # Traditional Raw Fish
+            filtered = df[df[target_col] == 'raw']
+            
+        # Return ALL available items for that category
+        suggestions = filtered[name_col].dropna().unique().tolist()
+        return suggestions
+        
+    except Exception:
+        # Fallback if any unexpected error occurs
+        df_fallback = pd.read_csv('data/OneRoll_updated.csv')
+        return df_fallback.iloc[:, 0].dropna().unique().tolist()
+        
+# ==========================================
+# CHAT ASSISTANT INTERFACE
+# ==========================================
+# st.title("🍣 Sushi Master & Food Safety Assistant")
+# --- SIDEBAR: STEP-BY-STEP OPTION BUILDER ---
+st.sidebar.markdown("### 🍣 Omakase Preferences")
+st.sidebar.markdown("Customize your assistant context before asking:")
+
+# Step 1: Choose Focus Area
+focus_area = st.sidebar.selectbox(
+    "Step 1: Choose Your Focus",
+    ["General / Any", "Recipes & Rolling Techniques", "Rice & Vinegar Preparation", "Food Safety & Parasite Guidelines"]
+)
+
+# Step 2: Choose Skill Level
+skill_level = st.sidebar.radio(
+    "Step 2: Select Skill Level",
+    ["Beginner (Step-by-step)", "Intermediate", "Advanced"]
+)
+
+# Step 3: Choose Preference
+dietary_pref = st.sidebar.selectbox(
+    "Step 3: Dietary Preference",
+    ["Traditional Raw Fish (Salmon/Tuna)", "Cooked", "Vegetarian / Vegetable Rolls"]
+)
+# Package your sidebar choices into a clean dictionary right here
+user_constraints = {
+    "focus_area": focus_area,
+    "skill_level": skill_level,
+    "dietary_preference": dietary_pref
+}
+
+# --- SESSION STATE FOR PAGINATION ---
+if "last_dietary_pref" not in st.session_state or st.session_state.last_dietary_pref != dietary_pref:
+    st.session_state.last_dietary_pref = dietary_pref
+    st.session_state.menu_page = 0
+
+if "menu_page" not in st.session_state:
+    st.session_state.menu_page = 0
+
+# --- DYNAMIC QUICK SUGGESTIONS (9 items per page with Next/Previous navigation) ---
+selected_item_query = None
+
+if dietary_pref != "-- Select Preference --":
+    all_suggested_items = get_dynamic_sushi_suggestions(dietary_pref)
+    total_items = len(all_suggested_items)
+    
+    page_size = 9
+    total_pages = (total_items + page_size - 1) // page_size if total_items > 0 else 1
+    
+    # Ensure current page is within valid bounds
+    if st.session_state.menu_page >= total_pages:
+        st.session_state.menu_page = 0
+        
+    start_idx = st.session_state.menu_page * page_size
+    end_idx = start_idx + page_size
+    current_page_items = all_suggested_items[start_idx:end_idx]
+    
+    st.markdown(f"### ⚡ Quick Menu: {dietary_pref.split('(')[0].strip()} ({total_items} available)")
+    st.markdown("Click any item below to instantly ask the Sushi Master for its recipe:")
+
+    # Render a 3x3 grid (up to 9 items)
+    cols = st.columns(3)
+    for idx, item_name in enumerate(current_page_items):
+        col = cols[idx % 3]
+        if col.button(f"🍣 {item_name}", key=f"quick_item_{st.session_state.menu_page}_{idx}", use_container_width=True):
+            selected_item_query = f"How do I prepare the {item_name}? Give me step-by-step instructions matching my profile."
+
+    # --- PAGINATION CONTROLS ---
+    if total_pages > 1:
+        st.markdown("")
+        col_prev, col_mid, col_next = st.columns([1, 2, 1])
+        
+        # Previous Button
+        if st.session_state.menu_page > 0:
+            if col_prev.button("⬅️ Previous", use_container_width=True):
+                st.session_state.menu_page -= 1
+                st.rerun()
+                
+        # Page Indicator
+        col_mid.markdown(
+            f"<div style='text-align: center; color: #A09B97; padding-top: 8px; font-size: 0.9rem;'>"
+            f"Page {st.session_state.menu_page + 1} of {total_pages}"
+            f"</div>", 
+            unsafe_allow_html=True
+        )
+        
+        # Next Button
+        if st.session_state.menu_page < total_pages - 1:
+            if col_next.button("Next ➡️", use_container_width=True):
+                st.session_state.menu_page += 1
+                st.rerun()
+
+    st.markdown("---")
+
+# --- UNIFIED CHAT INPUT (Only ONE chat input for the whole page) ---
+user_input = st.chat_input("Ask a sushi preparation or recipe question...")
+active_prompt = selected_item_query if selected_item_query else user_input
+
+if active_prompt:
+    st.session_state.messages.append({"role": "user", "content": active_prompt})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(active_prompt)
 
     with st.chat_message("assistant"):
         try:
-            # Unpack the stream, results, and log_holder from rag.py
-            stream, results, log_holder = rag_app.rag(prompt, chat_history=st.session_state.messages[:-1])
+            # Cleanly pass the constraints dictionary and chat history separately!
+            stream, results, log_holder = rag_app.rag(
+                active_prompt, 
+                constraints=user_constraints, 
+                chat_history=st.session_state.messages[:-1]
+            )
             
             # Stream the response live word-by-word onto the UI
             answer = st.write_stream(stream)
